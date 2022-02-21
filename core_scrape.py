@@ -62,6 +62,7 @@ def scrape_data(username, password):
 # Website for which this scraper was built, shows only 50 employees per page.       #
 # find_pages will try to check for the next page and if the page displays that      #
 # there are no more candidates to display, it'll stop collecting data.              #
+# Number of employees is changing.                                                  #
 #####################################################################################
 
 
@@ -88,7 +89,7 @@ def find_pages(driver):
 #####################################################################################
 # collect_data will get all the employees' names from the web-page and using them   #
 # it'll collect information about courses that the employees' are assigned to.      #
-# There are maximum 57 courses that each candidate can be assigned to.              #
+# There are maximum 57 courses that each candidate can have assigned to them.       #
 #####################################################################################
 
 
@@ -180,24 +181,56 @@ def get_data(emp_name, page_code):
 
 def convert_to_csv():
 
-    header = ['Employee']
-    data = []
+    ######################################################
+    # The main problem of converting this data into csv  #
+    # was that each employee could have different number #
+    # of courses assigned to them. Some employees had    #
+    # 52, others 57.                                     #
+    ######################################################
     with open('courses.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
+
+        ##############################################
+        # First, the code looks for all the courses. #
+        # This is to check how many courses are      #
+        # there in total. Number of all courses      #
+        # might change with time.                    #
+        ##############################################
+
+        columns = []
         for emp in employees_data:
-            courses_info = [emp.name]
             for course in emp.courses_data:
-                if course.name not in header:
-                    header.append(course.name)
+                if course.name not in columns:
+                    columns.append(course.name)
 
-                    """ REMEMBER !!! """
-                elif course.name in header:
-                    courses_info.append(course.expiry)
-                else:
-                    courses_info.append('N/A')
-            data.append(courses_info)
+        ################################################
+        # This code could be refactored in the future. #
+        ################################################
+        # Data needs to be prepared for csv.           #
+        # As each employee has different number of     #
+        # courses, if an employee has less than the    #
+        # maximum number of courses, missing data      #
+        # needs to be filled with 'N/A'.               #
+        ################################################
 
-            courses_info = []
+        rows = {}
+        header = ['Employees']
+        data = []
+
+        for emp in employees_data:
+            courses = {}
+            rows[emp.name] = [emp.name]
+            for course in emp.courses_data:
+                courses[course.name] = course.expiry
+            for col in columns:
+                if col not in header:
+                    header.append(col)
+                if col in courses:
+                    rows[emp.name].append(courses[col])
+                elif col not in courses:
+                    rows[emp.name].append('N/A')
+        for row in rows:
+            data.append(rows[row])
 
         writer.writerow(header)
         writer.writerows(data)
